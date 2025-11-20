@@ -3,7 +3,7 @@ const app = express();
 app.use(express.json());
 
 // Defina seu token de verificação
-const VERIFY_TOKEN = 'meu_token_secreto';
+const VERIFY_TOKEN = 'kernel6_bot_2025';
 
 // Rota GET para validação do webhook
 app.get('/webhook', (req, res) => {
