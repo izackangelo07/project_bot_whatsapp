@@ -1,11 +1,16 @@
 const express = require('express');
+const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-// Defina seu token de verificação
-const VERIFY_TOKEN = 'kernel6_bot_2025';
+// Token de verificação do webhook (variável de ambiente)
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// Rota GET para validação do webhook
+// Access Token e Phone Number ID do WhatsApp Cloud API (variáveis de ambiente)
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+
+// GET webhook para validação
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
@@ -23,17 +28,47 @@ app.get('/webhook', (req, res) => {
     }
 });
 
-// Rota POST para receber mensagens do WhatsApp
-app.post('/webhook', (req, res) => {
-    console.log('Evento recebido:', JSON.stringify(req.body, null, 2));
-    
-    // Aqui você pode processar a mensagem, por exemplo:
-    // const message = req.body.entry[0].changes[0].value.messages[0];
-    // console.log('Mensagem de:', message.from, 'Conteúdo:', message.text.body);
+// POST webhook para receber mensagens
+app.post('/webhook', async (req, res) => {
+    res.sendStatus(200); // responder rápido ao WhatsApp
 
-    res.sendStatus(200);
+    if (req.body.entry) {
+        try {
+            const changes = req.body.entry[0].changes[0];
+            const message = changes.value.messages?.[0];
+            const from = message?.from;
+            const text = message?.text?.body;
+
+            if (from && text && WHATSAPP_TOKEN && PHONE_NUMBER_ID) {
+                console.log(`Mensagem recebida de ${from}: ${text}`);
+
+                // Comandos simples
+                let reply = 'Desculpe, não entendi.';
+                if (text.toLowerCase() === 'oi') reply = 'Olá! Tudo bem?';
+                if (text.toLowerCase() === 'ajuda') reply = 'Envie OI para cumprimentar ou AJUDA para instruções.';
+
+                // Enviar resposta
+                await axios.post(
+                    `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
+                    {
+                        messaging_product: 'whatsapp',
+                        to: from,
+                        text: { body: reply }
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+            }
+        } catch (err) {
+            console.error('Erro ao processar mensagem:', err.message);
+        }
+    }
 });
 
-// Porta dinâmica para Render ou fallback 3000
+// Porta dinâmica para Render
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
