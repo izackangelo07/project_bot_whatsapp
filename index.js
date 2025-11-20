@@ -3,10 +3,10 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-// Token de verificação do webhook (variável de ambiente)
+// Token de verificação do webhook
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
-// Access Token e Phone Number ID do WhatsApp Cloud API (variáveis de ambiente)
+// Access Token e Phone Number ID do WhatsApp Cloud API
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 
@@ -47,14 +47,19 @@ app.post('/webhook', async (req, res) => {
                 if (text.toLowerCase() === 'oi') reply = 'Olá! Tudo bem?';
                 if (text.toLowerCase() === 'ajuda') reply = 'Envie OI para cumprimentar ou AJUDA para instruções.';
 
-                // Enviar resposta
-                await axios.post(
+                // Monta o JSON da mensagem
+                const payload = {
+                    messaging_product: 'whatsapp',
+                    to: from,
+                    text: { body: reply }
+                };
+
+                console.log('Enviando para WhatsApp:', JSON.stringify(payload, null, 2));
+
+                // Envia a mensagem
+                const response = await axios.post(
                     `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
-                    {
-                        messaging_product: 'whatsapp',
-                        to: from,
-                        text: { body: reply }
-                    },
+                    payload,
                     {
                         headers: {
                             'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
@@ -62,9 +67,16 @@ app.post('/webhook', async (req, res) => {
                         }
                     }
                 );
+
+                console.log('Resposta do WhatsApp:', response.data);
             }
         } catch (err) {
-            console.error('Erro ao processar mensagem:', err.message);
+            if (err.response) {
+                // Log detalhado do erro retornado pelo WhatsApp
+                console.error('Erro do WhatsApp API:', err.response.status, err.response.data);
+            } else {
+                console.error('Erro ao processar mensagem:', err.message);
+            }
         }
     }
 });
